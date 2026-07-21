@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>投資余裕資金シミュレーター｜決算書から投資可能額を試算</title>
+<meta name="description" content="決算書（貸借対照表・損益計算書）の数値を入力するだけで、運転資本・CCC・安全資金を考慮した投資可能額（余裕資金）を自動計算するシミュレーター。">
+<style>
+  :root{
+    --navy:#1f3864; --navy-l:#2c4a7c; --lblue:#d9e2f3; --green:#38761d; --green-l:#d9ead3;
+    --yellow:#fff2cc; --gray:#f3f3f3; --text:#222; --sub:#666; --red:#b45309; --redbg:#fdecec;
+    --bar1:#8faadc; --bar2:#1f3864;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{font-family:"Hiragino Kaku Gothic ProN","Hiragino Sans",Meiryo,sans-serif; color:var(--text); background:#f7f8fa; line-height:1.6;}
+  header{background:var(--navy); color:#fff; padding:28px 16px 22px;}
+  header .wrap{max-width:1120px; margin:0 auto;}
+  header h1{font-size:1.35rem; letter-spacing:.02em;}
+  header p{font-size:.8rem; opacity:.85; margin-top:6px;}
+  main{max-width:1120px; margin:0 auto; padding:20px 16px 60px;}
+  .grid{display:grid; grid-template-columns:360px 1fr; gap:20px;}
+  @media(max-width:900px){.grid{grid-template-columns:1fr;}}
+  .card{background:#fff; border-radius:10px; box-shadow:0 1px 4px rgba(0,0,0,.08); padding:20px; margin-bottom:20px;}
+  .card h2{font-size:1rem; color:var(--navy); border-left:4px solid var(--navy); padding-left:10px; margin-bottom:14px;}
+  .inrow{display:grid; grid-template-columns:1fr 108px 108px; gap:6px; align-items:center; margin-top:8px;}
+  .inrow.head{font-size:.72rem; color:var(--sub); margin-top:12px;}
+  .inrow.head span{text-align:center;}
+  .inrow label{font-size:.8rem; color:var(--sub);}
+  .inrow input{width:100%; padding:7px 8px; font-size:.88rem; border:1.5px solid #ccd3e0; border-radius:6px; background:var(--yellow); text-align:right;}
+  .inrow input.prev{background:#fdfaf0;}
+  .inrow input:focus{outline:2px solid var(--navy-l);}
+  .note{font-size:.72rem; color:var(--sub); margin-top:4px;}
+  select{width:100%; padding:8px 10px; font-size:.9rem; border:1.5px solid #ccd3e0; border-radius:6px; background:var(--yellow); margin-top:3px;}
+  input[type=range]{width:100%; margin-top:8px; accent-color:var(--navy);}
+  .plabel{display:block; font-size:.82rem; color:var(--sub); margin-top:12px;}
+  .conclusion{background:var(--green-l); border-radius:10px; padding:18px 20px; margin-bottom:20px; border:1px solid #bcd6b0;}
+  .conclusion.ng{background:var(--redbg); border-color:#e5b8b0;}
+  .conclusion h2{color:var(--green); font-size:1.05rem; margin-bottom:8px;}
+  .conclusion.ng h2{color:var(--red);}
+  .conclusion .big{font-size:2rem; font-weight:bold; color:var(--green); line-height:1.25;}
+  .conclusion.ng .big{color:var(--red);}
+  .conclusion .oku{font-size:1.1rem; margin-left:8px;}
+  .conclusion .verdict{font-size:.9rem; margin-top:8px;}
+  .kpis{display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-top:12px;}
+  @media(max-width:700px){.kpis{grid-template-columns:repeat(2,1fr);}}
+  .kpi{background:rgba(255,255,255,.65); border-radius:8px; padding:8px 10px;}
+  .kpi .t{font-size:.7rem; color:var(--sub);}
+  .kpi .v{font-size:.98rem; font-weight:bold; color:var(--navy);}
+  table{width:100%; border-collapse:collapse; font-size:.86rem;}
+  th,td{padding:7px 10px; text-align:right; border-bottom:1px solid #e7eaf0; white-space:nowrap;}
+  th:first-child, td:first-child{text-align:left; white-space:normal;}
+  thead th{background:var(--navy); color:#fff; text-align:center; font-weight:600;}
+  tr.hl td{background:var(--lblue); color:var(--navy); font-weight:bold;}
+  tr.warn2 td{background:#fff8e6;}
+  .neg{color:var(--red); font-weight:bold;}
+  .barwrap{margin:14px 4px 4px;}
+  .brow{display:grid; grid-template-columns:150px 1fr 120px; gap:8px; align-items:center; margin-top:7px; font-size:.78rem;}
+  .brow .lbl{color:var(--sub); text-align:right;}
+  .btrack{background:#eef1f6; border-radius:4px; height:20px; position:relative; overflow:hidden;}
+  .bfill{height:100%; border-radius:4px 0 0 4px;}
+  .brow .val{font-size:.8rem; color:var(--text); text-align:left; white-space:nowrap;}
+  .legend{display:flex; gap:16px; font-size:.75rem; color:var(--sub); margin-top:10px;}
+  .legend span::before{content:"■ ";}
+  .lg-a::before{color:var(--bar1);} .lg-b::before{color:var(--bar2);}
+  .warn{background:#fff8e6; border:1px solid #eeddaa; border-radius:10px; padding:16px 18px; font-size:.8rem; color:#664d1a;}
+  .warn h3{font-size:.9rem; margin-bottom:6px;}
+  .warn li{margin-left:1.2em; margin-top:3px;}
+  footer{text-align:center; font-size:.75rem; color:var(--sub); padding:20px 0 40px;}
+  .headrow{display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap;}
+  #printBtn{background:#fff; color:var(--navy); font-weight:bold; padding:8px 14px; border:none; border-radius:6px; cursor:pointer; flex-shrink:0;}
+  #printBtn:hover{background:var(--lblue);}
+  @media print{
+    *{-webkit-print-color-adjust:exact; print-color-adjust:exact;}
+    body{background:#fff;}
+    header{padding:12px 16px;}
+    main{padding:10px 0;}
+    .grid{grid-template-columns:1fr; gap:8px;}
+    #printBtn, .note, input[type=range]{display:none;}
+    .card, .conclusion, .warn{box-shadow:none; border:1px solid #d8dce4; break-inside:avoid; margin-bottom:8px; padding:12px 16px;}
+    footer{padding:8px 0;}
+  }
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <div class="headrow">
+      <h1>投資余裕資金シミュレーター</h1>
+      <button id="printBtn" onclick="window.print()">🖨 印刷・PDF保存</button>
+    </div>
+    <p>決算書（B/S・P/L）の数値を入力するだけで、運転資本・CCC・安全資金を考慮した「投資に回せる上限額」を自動計算します（前期は任意入力）</p>
+  </div>
+</header>
+<main>
+
+<div class="conclusion" id="conc">
+  <h2>■ 分析結果（サマリー）</h2>
+  <div>投資可能額（当期・上限目線）</div>
+  <div class="big"><span id="ansYen">–</span><span class="oku" id="ansOku"></span></div>
+  <div class="verdict" id="verdict"></div>
+  <div class="kpis">
+    <div class="kpi"><div class="t">営業利益（当期）</div><div class="v" id="kEigyo">–</div></div>
+    <div class="kpi"><div class="t">経常利益（当期）</div><div class="v" id="kKeijo">–</div></div>
+    <div class="kpi"><div class="t">CCC（当期）</div><div class="v" id="kCcc">–</div></div>
+    <div class="kpi"><div class="t">実質手元現金（現預金−短期借入金）</div><div class="v" id="kCash">–</div></div>
+  </div>
+</div>
+
+<div class="grid">
+  <div>
+    <div class="card">
+      <h2>損益計算書（P/L）</h2>
+      <div class="inrow head"><span></span><span>前期（任意）</span><span>当期</span></div>
+      <div class="inrow"><label>売上高</label><input class="prev" id="p_uri" value=""><input id="c_uri" value="1,958,146,031"></div>
+      <div class="inrow"><label>売上原価</label><input class="prev" id="p_gen" value=""><input id="c_gen" value="1,296,722,748"></div>
+      <div class="inrow"><label>販管費及び一般管理費</label><input class="prev" id="p_han" value=""><input id="c_han" value="223,189,794"></div>
+      <div class="inrow"><label>うち減価償却費</label><input class="prev" id="p_gnk" value=""><input id="c_gnk" value="11,778,695"></div>
+      <div class="inrow"><label>営業外収益</label><input class="prev" id="p_es" value=""><input id="c_es" value="171,749,906"></div>
+      <div class="inrow"><label>営業外費用</label><input class="prev" id="p_eh" value=""><input id="c_eh" value="17,996,045"></div>
+      <div class="inrow"><label>うち支払利息</label><input class="prev" id="p_ri" value=""><input id="c_ri" value="8,998,866"></div>
+    </div>
+    <div class="card">
+      <h2>貸借対照表（B/S）</h2>
+      <div class="inrow head"><span></span><span>前期（任意）</span><span>当期</span></div>
+      <div class="inrow"><label>流動資産合計</label><input class="prev" id="p_la" value=""><input id="c_la" value="1,171,972,433"></div>
+      <div class="inrow"><label>現金及び預金</label><input class="prev" id="p_cash" value=""><input id="c_cash" value="434,787,499"></div>
+      <div class="inrow"><label>売掛金</label><input class="prev" id="p_uk" value=""><input id="c_uk" value="344,139,514"></div>
+      <div class="inrow"><label>未収入金（貸倒引当金控除後）</label><input class="prev" id="p_ms" value=""><input id="c_ms" value="59,774,959"></div>
+      <div class="inrow"><label>棚卸資産</label><input class="prev" id="p_tn" value=""><input id="c_tn" value="327,653,161"></div>
+      <div class="inrow"><label>短期貸付金</label><input class="prev" id="p_tk" value=""><input id="c_tk" value="0"></div>
+      <div class="note">役員貸付等。投資原資から自動で除外されます。</div>
+      <div class="inrow"><label>買掛金</label><input class="prev" id="p_kk" value=""><input id="c_kk" value="57,195,401"></div>
+      <div class="inrow"><label>未払金</label><input class="prev" id="p_mb" value=""><input id="c_mb" value="21,737,637"></div>
+      <div class="inrow"><label>短期借入金</label><input class="prev" id="p_tb" value=""><input id="c_tb" value="0"></div>
+    </div>
+    <div class="card">
+      <h2>分析パラメータ</h2>
+      <label class="plabel">安全資金（販管費の何ヶ月分を手元に残すか）：<b id="mLabel">12</b> ヶ月
+        <input type="range" id="months" min="3" max="12" step="1" value="12">
+      </label>
+      <div class="note">突発的な支出・回収遅延への備え。業種・回収サイトに応じて調整。</div>
+      <label class="plabel">仕入債務の範囲
+        <select id="shiire">
+          <option value="1" selected>買掛金＋未払金（一般企業）</option>
+          <option value="0">買掛金のみ（医療法人・サービス業）</option>
+        </select>
+      </label>
+      <div class="note">未払金が給与・経費性の業種では「買掛金のみ」を推奨。</div>
+    </div>
+  </div>
+
+  <div>
+    <div class="card">
+      <h2>投資可能額の算出</h2>
+      <table id="tblInv"></table>
+      <div class="barwrap" id="invBars"></div>
+    </div>
+    <div class="card">
+      <h2>運転資本とCCC（キャッシュ・コンバージョン・サイクル）</h2>
+      <table id="tblCcc"></table>
+      <div class="barwrap" id="cccBars"></div>
+      <div class="legend"><span class="lg-a">前期</span><span class="lg-b">当期</span></div>
+    </div>
+    <div class="card">
+      <h2>安全資金の前提別 感応度（当期）</h2>
+      <table id="tblSens"></table>
+    </div>
+    <div class="warn">
+      <h3>ご利用にあたって</h3>
+      <ul>
+        <li>投資可能額は機械計算の<b>上限目線</b>です。現預金から新たに全額を投資する意味ではなく、流動性の低い既存運用資産の組み換えを含めた総額ベースの目安です。</li>
+        <li>仕入債務の定義・安全資金の水準・貸付金の回収可能性により結果は大きく変わります。<b>最終判断は税理士等の専門家にご相談ください。</b></li>
+        <li>初期値は架空のサンプル数値です。実在の企業とは一切関係ありません。</li>
+      </ul>
+    </div>
+  </div>
+</div>
+</main>
+<footer>© 山下税理士事務所｜本シミュレーターは概算試算ツールであり、結果の正確性を保証するものではありません。</footer>
+<script>
+const $=id=>document.getElementById(id);
+const IDS=['uri','gen','han','gnk','es','eh','ri','la','cash','uk','ms','tn','tk','kk','mb','tb'];
+const yen=n=>isFinite(n)?Math.round(n).toLocaleString('ja-JP'):'–';
+const parseNum=s=>{const v=parseFloat(String(s).replace(/[,，\s円]/g,''));return isFinite(v)?v:NaN;};
+
+function readPeriod(prefix){
+  const o={};
+  for(const k of IDS) o[k]=parseNum($(prefix+'_'+k).value);
+  return o;
+}
+function calc(d, months, incMibarai){
+  if(!isFinite(d.uri)||!isFinite(d.la)) return null;
+  const z=k=>isFinite(d[k])?d[k]:0;
+  const saiken=z('uk')+z('ms'), tana=z('tn');
+  const saimu=z('kk')+(incMibarai?z('mb'):0);
+  const wc=saiken+tana-saimu;
+  const d1=d.uri>0?saiken/d.uri*365:NaN;
+  const d2=d.gen>0?tana/d.gen*365:NaN;
+  const d3=d.gen>0?saimu/d.gen*365:NaN;
+  const ccc=isFinite(d1)&&isFinite(d2)&&isFinite(d3)?d1+d2-d3:NaN;
+  const othHan=z('han')-z('gnk');
+  const hanCcc=isFinite(ccc)?ccc*othHan/365:NaN;
+  const totalCO=isFinite(hanCcc)?wc+hanCcc+z('ri'):NaN;
+  const realLA=z('la')-z('tk');
+  const safety=z('han')/12*months;
+  const invest=realLA-wc-safety;
+  const eigyo=z('uri')-z('gen')-z('han');
+  const keijo=eigyo+z('es')-z('eh');
+  const realCash=z('cash')-z('tb');
+  return {saiken,tana,saimu,wc,d1,d2,d3,ccc,othHan,hanCcc,totalCO,realLA,safety,invest,eigyo,keijo,realCash,han:z('han')};
+}
+function bar(label,val,max,color,fmt){
+  const w=max>0?Math.max(0,Math.min(100,val/max*100)):0;
+  return `<div class="brow"><div class="lbl">${label}</div><div class="btrack"><div class="bfill" style="width:${w}%;background:${color}"></div></div><div class="val">${fmt}</div></div>`;
+}
+function render(){
+  $('mLabel').textContent=$('months').value;
+  const months=+$('months').value, inc=$('shiire').value==='1';
+  const cur=calc(readPeriod('c'),months,inc);
+  const prev=calc(readPeriod('p'),months,inc);
+  if(!cur){$('ansYen').textContent='当期の売上高・流動資産を入力してください';$('ansOku').textContent='';return;}
+
+  // サマリー
+  const conc=$('conc');
+  $('ansYen').textContent=yen(cur.invest)+' 円';
+  $('ansOku').textContent='（≒ '+(cur.invest/1e8).toFixed(1)+' 億円）';
+  if(cur.invest<0){
+    conc.classList.add('ng');
+    $('verdict').textContent='⚠ 投資余力なし。流動資産が運転資本＋安全資金を下回るため、新規運用より借入圧縮・資金繰り改善を優先してください。';
+  }else{
+    conc.classList.remove('ng');
+    $('verdict').textContent=`流動資産から運転資本と安全資金（販管費 ${months} ヶ月分）を確保した上での余剰資金。上限目線であり、流動性を維持しながら段階的に運用する前提です。`;
+  }
+  $('kEigyo').textContent=yen(cur.eigyo)+' 円';
+  $('kKeijo').textContent=yen(cur.keijo)+' 円';
+  $('kCcc').textContent=isFinite(cur.ccc)?cur.ccc.toFixed(1)+' 日':'–';
+  $('kCash').textContent=yen(cur.realCash)+' 円';
+
+  // 投資判定テーブル
+  const pc=(f)=>prev?`<td>${f(prev)}</td>`:'';
+  const ph=prev?'<th>前期</th>':'';
+  const neg=v=>v<0?' class="neg"':'';
+  $('tblInv').innerHTML=`
+    <thead><tr><th>項目</th>${ph}<th>当期</th><th>説明</th></tr></thead>
+    <tr><td>① 実質流動資産</td>${pc(p=>yen(p.realLA))}<td>${yen(cur.realLA)}</td><td style="text-align:left">流動資産 − 短期貸付金</td></tr>
+    <tr><td>② 運転資本</td>${pc(p=>yen(p.wc))}<td>${yen(cur.wc)}</td><td style="text-align:left">売上債権＋棚卸 − 仕入債務</td></tr>
+    <tr><td>③ 理論上の余力</td>${pc(p=>yen(p.realLA-p.wc))}<td>${yen(cur.realLA-cur.wc)}</td><td style="text-align:left">① − ②</td></tr>
+    <tr><td>④ 安全資金</td>${pc(p=>yen(p.safety))}<td>${yen(cur.safety)}</td><td style="text-align:left">販管費 × ${months}ヶ月分</td></tr>
+    <tr class="hl"><td>⑤ 投資可能額</td>${prev?`<td${neg(prev.invest)}>${yen(prev.invest)}</td>`:''}<td${neg(cur.invest)}>${yen(cur.invest)}</td><td style="text-align:left">① − ② − ④（上限目線）</td></tr>`;
+  const m=Math.max(cur.realLA,cur.wc,cur.safety,Math.abs(cur.invest));
+  $('invBars').innerHTML=
+    bar('① 実質流動資産',cur.realLA,m,'var(--bar1)',yen(cur.realLA))+
+    bar('② 運転資本',cur.wc,m,'#c0504d',yen(cur.wc))+
+    bar('④ 安全資金',cur.safety,m,'#e8b64c',yen(cur.safety))+
+    bar('⑤ 投資可能額',Math.max(0,cur.invest),m,cur.invest<0?'#b45309':'var(--green)',yen(cur.invest));
+
+  // CCC テーブル＋バー
+  const day=v=>isFinite(v)?v.toFixed(1)+'日':'–';
+  $('tblCcc').innerHTML=`
+    <thead><tr><th>項目</th>${ph}<th>当期</th><th>算式</th></tr></thead>
+    <tr><td>運転資本</td>${pc(p=>yen(p.wc))}<td>${yen(cur.wc)}</td><td style="text-align:left">売上債権＋棚卸−仕入債務</td></tr>
+    <tr><td>売上債権回転日数</td>${pc(p=>day(p.d1))}<td>${day(cur.d1)}</td><td style="text-align:left">売上債権÷売上高×365</td></tr>
+    <tr><td>棚卸回転日数</td>${pc(p=>day(p.d2))}<td>${day(cur.d2)}</td><td style="text-align:left">棚卸÷売上原価×365</td></tr>
+    <tr><td>仕入債務回転日数</td>${pc(p=>day(p.d3))}<td>${day(cur.d3)}</td><td style="text-align:left">仕入債務÷売上原価×365</td></tr>
+    <tr class="hl"><td>CCC</td>${pc(p=>day(p.ccc))}<td>${day(cur.ccc)}</td><td style="text-align:left">短いほど資金効率が良い</td></tr>
+    <tr><td>総キャッシュアウト</td>${pc(p=>yen(p.totalCO))}<td>${yen(cur.totalCO)}</td><td style="text-align:left">運転資本＋販管費/CCC＋支払利息</td></tr>`;
+  const rows=[['売上債権回転日数','d1'],['棚卸回転日数','d2'],['仕入債務回転日数','d3'],['CCC','ccc']];
+  const mx=Math.max(...rows.map(r=>Math.max(prev&&isFinite(prev[r[1]])?prev[r[1]]:0,isFinite(cur[r[1]])?cur[r[1]]:0)));
+  $('cccBars').innerHTML=rows.map(r=>{
+    let h='';
+    if(prev&&isFinite(prev[r[1]])) h+=bar(r[0]+'（前期）',prev[r[1]],mx,'var(--bar1)',day(prev[r[1]]));
+    h+=bar(r[0]+'（当期）',isFinite(cur[r[1]])?cur[r[1]]:0,mx,'var(--bar2)',day(cur[r[1]]));
+    return h;
+  }).join('');
+
+  // 感応度
+  $('tblSens').innerHTML=`
+    <thead><tr><th>安全資金の前提</th><th>安全資金額</th><th>投資可能額（当期）</th></tr></thead>
+    ${[3,6,12].map(mm=>{
+      const s=cur.han/12*mm, iv=cur.realLA-cur.wc-s;
+      const cls=mm===months?' class="hl"':(iv<0?' class="warn2"':'');
+      return `<tr${cls}><td>販管費 ${mm} ヶ月分</td><td>${yen(s)}</td><td${iv<0?' class="neg"':''}>${yen(iv)}</td></tr>`;
+    }).join('')}`;
+}
+// カンマ整形＋再計算
+document.querySelectorAll('.inrow input').forEach(el=>{
+  el.addEventListener('input',()=>{render();});
+  el.addEventListener('blur',()=>{const v=parseNum(el.value);el.value=isFinite(v)?v.toLocaleString('ja-JP'):el.value;render();});
+});
+$('months').addEventListener('input',render);
+$('shiire').addEventListener('change',render);
+render();
+</script>
+</body>
+</html>
