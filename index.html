@@ -6,78 +6,103 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>投資余裕資金シミュレーター｜決算書から投資可能額を試算</title>
 <meta name="description" content="決算書（貸借対照表・損益計算書）の数値を入力するだけで、運転資本・CCC・安全資金を考慮した投資可能額（余裕資金）を自動計算するシミュレーター。">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;700;900&display=swap" rel="stylesheet">
 <style>
+  /* デザイン：白×ターコイズの経済メディア風（2026-10-15 共通デザイン）。印刷を考えて塗りは最小限、罫線で区切る */
   :root{
-    --navy:#1f3864; --navy-l:#2c4a7c; --lblue:#d9e2f3; --green:#38761d; --green-l:#d9ead3;
-    --yellow:#fff2cc; --gray:#f3f3f3; --text:#222; --sub:#666; --red:#b45309; --redbg:#fdecec;
-    --bar1:#8faadc; --bar2:#1f3864;
+    --ink:#111; --sub:#5f6368; --line:#e3e3e3; --accent:#6fe0e6;
+    --pos:#157f3b; --neg:#c2410c; --bg:#fff;
+    /* グラフ：主役＝アクセント、2番目＝斜線、3番目＝黒、4番目＝グレー */
+    --c-main:var(--accent);
+    --c-hatch:repeating-linear-gradient(45deg,#9a9a9a 0 1px,transparent 1px 6px);
+    --c-dark:var(--ink);
+    --c-gray:#bdbdbd;
   }
   *{box-sizing:border-box; margin:0; padding:0;}
-  body{font-family:"Hiragino Kaku Gothic ProN","Hiragino Sans",Meiryo,sans-serif; color:var(--text); background:#f7f8fa; line-height:1.6;}
-  header{background:var(--navy); color:#fff; padding:28px 16px 22px;}
+  body{font-family:"Inter","Noto Sans JP","Hiragino Sans",sans-serif; color:var(--ink); background:var(--bg); line-height:1.7; -webkit-font-smoothing:antialiased;}
+  td, .big, .stats b, .brow .val, .inrow input{font-variant-numeric:tabular-nums;}
+  header{border-top:6px solid var(--ink); padding:28px 20px 22px; border-bottom:1px solid var(--ink);}
   header .wrap{max-width:1120px; margin:0 auto;}
-  header h1{font-size:1.35rem; letter-spacing:.02em;}
-  header p{font-size:.8rem; opacity:.85; margin-top:6px;}
-  main{max-width:1120px; margin:0 auto; padding:20px 16px 60px;}
-  .grid{display:grid; grid-template-columns:360px 1fr; gap:20px;}
-  @media(max-width:900px){.grid{grid-template-columns:1fr;}}
-  .card{background:#fff; border-radius:10px; box-shadow:0 1px 4px rgba(0,0,0,.08); padding:20px; margin-bottom:20px;}
-  .card h2{font-size:1rem; color:var(--navy); border-left:4px solid var(--navy); padding-left:10px; margin-bottom:14px;}
-  .inrow{display:grid; grid-template-columns:1fr 108px 108px; gap:6px; align-items:center; margin-top:8px;}
-  .inrow.head{font-size:.72rem; color:var(--sub); margin-top:12px;}
-  .inrow.head span{text-align:center;}
-  .inrow label{font-size:.8rem; color:var(--sub);}
-  .inrow input{width:100%; padding:7px 8px; font-size:.88rem; border:1.5px solid #ccd3e0; border-radius:6px; background:var(--yellow); text-align:right;}
-  .inrow input.prev{background:#fdfaf0;}
-  .inrow input:focus{outline:2px solid var(--navy-l);}
-  .note{font-size:.72rem; color:var(--sub); margin-top:4px;}
-  select{width:100%; padding:8px 10px; font-size:.9rem; border:1.5px solid #ccd3e0; border-radius:6px; background:var(--yellow); margin-top:3px;}
-  input[type=range]{width:100%; margin-top:8px; accent-color:var(--navy);}
-  .plabel{display:block; font-size:.82rem; color:var(--sub); margin-top:12px;}
-  .conclusion{background:var(--green-l); border-radius:10px; padding:18px 20px; margin-bottom:20px; border:1px solid #bcd6b0;}
-  .conclusion.ng{background:var(--redbg); border-color:#e5b8b0;}
-  .conclusion h2{color:var(--green); font-size:1.05rem; margin-bottom:8px;}
-  .conclusion.ng h2{color:var(--red);}
-  .conclusion .big{font-size:2rem; font-weight:bold; color:var(--green); line-height:1.25;}
-  .conclusion.ng .big{color:var(--red);}
-  .conclusion .oku{font-size:1.1rem; margin-left:8px;}
-  .conclusion .verdict{font-size:.9rem; margin-top:8px;}
-  .kpis{display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-top:12px;}
-  @media(max-width:700px){.kpis{grid-template-columns:repeat(2,1fr);}}
-  .kpi{background:rgba(255,255,255,.65); border-radius:8px; padding:8px 10px;}
-  .kpi .t{font-size:.7rem; color:var(--sub);}
-  .kpi .v{font-size:.98rem; font-weight:bold; color:var(--navy);}
+  .tag{display:inline-block; background:var(--accent); color:var(--ink); font-size:.75rem; font-weight:700; padding:2px 10px; letter-spacing:.06em;}
+  header h1{font-size:clamp(1.6rem,4vw,2.4rem); font-weight:900; letter-spacing:-.01em; line-height:1.25; margin-top:10px;}
+  header .sub{font-size:.95rem; font-weight:700; margin-top:6px;}
+  header p.lead{font-size:.82rem; color:var(--sub); margin-top:6px;}
+  main{max-width:1120px; margin:0 auto; padding:28px 20px 60px;}
+  .grid{display:grid; grid-template-columns:360px 1fr; gap:40px;}
+  @media(max-width:900px){.grid{grid-template-columns:1fr; gap:24px;}}
+  .card{padding:0 0 22px; margin-bottom:26px; border-bottom:1px solid var(--line); min-width:0;}
+  .card h2, .conclusion h2{font-size:.78rem; font-weight:700; letter-spacing:.12em; color:var(--ink); border-top:2px solid var(--ink); padding-top:8px; margin-bottom:14px;}
+  .inrow{display:grid; grid-template-columns:1fr 108px 108px; gap:10px; align-items:end; margin-top:6px;}
+  @media(max-width:420px){.inrow{grid-template-columns:1fr 92px 92px; gap:8px;}}
+  .inrow.head{font-size:.72rem; color:var(--sub); margin-top:4px;}
+  .inrow.head span{text-align:right;}
+  .inrow label{font-size:.8rem; color:var(--sub); padding-bottom:7px;}
+  .inrow input{width:100%; padding:7px 2px; font-size:.95rem; font-weight:600; font-family:inherit; color:var(--ink); border:none; border-bottom:1.5px solid #bdbdbd; border-radius:0; background:transparent; text-align:right;}
+  .inrow input.prev{color:var(--sub); font-weight:500;}
+  .inrow input:focus{outline:none; border-bottom-color:var(--ink);}
+  .note{font-size:.72rem; color:var(--sub); margin-top:6px;}
+  select{width:100%; padding:9px 2px; font-size:1rem; font-weight:600; font-family:inherit; color:var(--ink); border:none; border-bottom:1.5px solid #bdbdbd; border-radius:0; background:transparent; margin-top:2px;}
+  select:focus{outline:none; border-bottom-color:var(--ink);}
+  input[type=range]{width:100%; margin-top:10px; accent-color:var(--ink);}
+  .plabel{display:block; font-size:.8rem; color:var(--sub); margin-top:14px;}
+  .plabel b{color:var(--ink);}
+  .conclusion{margin-bottom:34px;}
+  .conclusion .label{font-size:.85rem; color:var(--sub);}
+  .conclusion .big{font-size:clamp(2.4rem,6vw,3.6rem); font-weight:800; letter-spacing:-.03em; line-height:1.15; margin:2px 0 6px; overflow-wrap:anywhere;}
+  .conclusion .big .mark{background:linear-gradient(transparent 62%, var(--accent) 62%);}
+  .conclusion .big small{display:inline-block; font-size:.36em; font-weight:700; letter-spacing:0; margin-left:6px; color:var(--sub);}
+  .conclusion.ng .big .mark{color:var(--neg);}
+  .conclusion .verdict{font-size:.88rem; margin-top:4px;}
+  .conclusion.ng .verdict{color:var(--neg); font-weight:700;}
+  .stats{display:grid; grid-template-columns:repeat(4,1fr); border-top:1px solid var(--line); margin-top:14px;}
+  .stats div{padding:12px 12px 4px 0; min-width:0;}
+  .stats div + div{border-left:1px solid var(--line); padding-left:14px;}
+  .stats span{display:block; font-size:.74rem; color:var(--sub);}
+  .stats b{display:block; font-size:1.15rem; font-weight:700; letter-spacing:-.01em; overflow-wrap:anywhere;}
+  @media(max-width:760px){.stats{grid-template-columns:repeat(2,1fr);} .stats div:nth-child(3){border-left:none; padding-left:0;} .stats div:nth-child(n+3){border-top:1px solid var(--line);}}
+  @media(max-width:420px){.stats{grid-template-columns:1fr;} .stats div + div{border-left:none; border-top:1px solid var(--line); padding-left:0;}}
+  .tblwrap{overflow-x:auto;}
   table{width:100%; border-collapse:collapse; font-size:.86rem;}
-  th,td{padding:7px 10px; text-align:right; border-bottom:1px solid #e7eaf0; white-space:nowrap;}
-  th:first-child, td:first-child{text-align:left; white-space:normal;}
-  thead th{background:var(--navy); color:#fff; text-align:center; font-weight:600;}
-  tr.hl td{background:var(--lblue); color:var(--navy); font-weight:bold;}
-  tr.warn2 td{background:#fff8e6;}
-  .neg{color:var(--red); font-weight:bold;}
-  .barwrap{margin:14px 4px 4px;}
-  .brow{display:grid; grid-template-columns:150px 1fr 120px; gap:8px; align-items:center; margin-top:7px; font-size:.78rem;}
+  th,td{padding:9px 8px; text-align:right; border-bottom:1px solid var(--line); white-space:nowrap;}
+  th:first-child, td:first-child{text-align:left; white-space:normal; padding-left:0;}
+  thead th{font-size:.75rem; color:var(--sub); font-weight:500; border-bottom:1.5px solid var(--ink); text-align:right;}
+  thead th:first-child{text-align:left;}
+  td[style]{color:var(--sub); font-size:.8rem; white-space:normal;}
+  tr.hl td{font-weight:700; border-top:1.5px solid var(--ink); color:var(--ink);}
+  tr.hl td:first-child{box-shadow:inset 4px 0 0 var(--accent); padding-left:10px;}
+  .neg{color:var(--neg); font-weight:700;}
+  tr.hl td.neg{color:var(--neg);}
+  .barwrap{margin:18px 0 4px;}
+  .brow{display:grid; grid-template-columns:150px 1fr 110px; gap:10px; align-items:center; margin-top:8px; font-size:.78rem;}
+  @media(max-width:560px){.brow{grid-template-columns:96px 1fr 84px; gap:6px; font-size:.72rem;}}
   .brow .lbl{color:var(--sub); text-align:right;}
-  .btrack{background:#eef1f6; border-radius:4px; height:20px; position:relative; overflow:hidden;}
-  .bfill{height:100%; border-radius:4px 0 0 4px;}
-  .brow .val{font-size:.8rem; color:var(--text); text-align:left; white-space:nowrap;}
-  .legend{display:flex; gap:16px; font-size:.75rem; color:var(--sub); margin-top:10px;}
-  .legend span::before{content:"■ ";}
-  .lg-a::before{color:var(--bar1);} .lg-b::before{color:var(--bar2);}
-  .warn{background:#fff8e6; border:1px solid #eeddaa; border-radius:10px; padding:16px 18px; font-size:.8rem; color:#664d1a;}
-  .warn h3{font-size:.9rem; margin-bottom:6px;}
+  .btrack{height:18px; position:relative; border-left:1px solid var(--ink);}
+  .bfill{height:100%; border:1px solid var(--ink); border-left:none;}
+  .bfill[style*="width:0%"]{border:none;}
+  .brow .val{font-size:.8rem; font-weight:600; color:var(--ink); text-align:left; white-space:nowrap;}
+  .legend{display:flex; gap:18px; font-size:.75rem; color:var(--sub); margin-top:12px;}
+  .legend span::before{content:""; display:inline-block; width:10px; height:10px; margin-right:5px; vertical-align:-1px; border:1px solid var(--ink);}
+  .lg-a::before{background-image:repeating-linear-gradient(45deg,#9a9a9a 0 1px,transparent 1px 4px);} .lg-b::before{background:var(--accent);}
+  .warn{border:1px solid var(--ink); padding:16px 18px; font-size:.8rem; line-height:1.8;}
+  .warn h3{font-size:.85rem; margin-bottom:6px;}
   .warn li{margin-left:1.2em; margin-top:3px;}
-  footer{text-align:center; font-size:.75rem; color:var(--sub); padding:20px 0 40px;}
-  .headrow{display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap;}
-  #printBtn{background:#fff; color:var(--navy); font-weight:bold; padding:8px 14px; border:none; border-radius:6px; cursor:pointer; flex-shrink:0;}
-  #printBtn:hover{background:var(--lblue);}
+  footer{max-width:1120px; margin:0 auto; border-top:1px solid var(--ink); font-size:.75rem; color:var(--sub); padding:14px 20px 40px;}
+  .headrow{display:flex; justify-content:space-between; align-items:flex-start; gap:12px; flex-wrap:wrap;}
+  #printBtn{background:#fff; color:var(--ink); border:1.5px solid var(--ink); border-radius:4px; font-weight:700; font-family:inherit; font-size:.85rem; padding:7px 14px; cursor:pointer; flex-shrink:0;}
+  #printBtn:hover{background:var(--accent);}
   @media print{
     *{-webkit-print-color-adjust:exact; print-color-adjust:exact;}
     body{background:#fff;}
-    header{padding:12px 16px;}
+    header{padding:0 0 10px; border-top-width:4px;}
+    header h1{font-size:1.5rem;}
     main{padding:10px 0;}
     .grid{grid-template-columns:1fr; gap:8px;}
     #printBtn, .note, input[type=range]{display:none;}
-    .card, .conclusion, .warn{box-shadow:none; border:1px solid #d8dce4; break-inside:avoid; margin-bottom:8px; padding:12px 16px;}
+    .card, .conclusion, .warn{break-inside:avoid; margin-bottom:8px;}
+    .card{padding-bottom:10px;}
+    .conclusion .big{font-size:2.2rem;}
+    th, td{padding:5px 8px;}
     footer{padding:8px 0;}
   }
 </style>
@@ -86,24 +111,26 @@
 <header>
   <div class="wrap">
     <div class="headrow">
-      <h1>投資余裕資金シミュレーター</h1>
-      <button id="printBtn" onclick="window.print()">🖨 印刷・PDF保存</button>
+      <span class="tag">投資余裕資金</span>
+      <button id="printBtn" onclick="window.print()">印刷・PDF保存</button>
     </div>
-    <p>決算書（B/S・P/L）の数値を入力するだけで、運転資本・CCC・安全資金を考慮した「投資に回せる上限額」を自動計算します（前期は任意入力）</p>
+    <h1>会社のお金、<br>いくらまで投資に回せる？</h1>
+    <p class="sub">投資余裕資金シミュレーター</p>
+    <p class="lead">決算書（B/S・P/L）の数値を入力するだけで、運転資本・CCC・安全資金を考慮した「投資に回せる上限額」を自動計算します（前期は任意入力）</p>
   </div>
 </header>
 <main>
 
 <div class="conclusion" id="conc">
-  <h2>■ 分析結果（サマリー）</h2>
-  <div>投資可能額（当期・上限目線）</div>
-  <div class="big"><span id="ansYen">–</span><span class="oku" id="ansOku"></span></div>
+  <h2>結論 ｜ 運転資本と安全資金を残したうえで</h2>
+  <div class="label">投資可能額（当期・上限目線）</div>
+  <div class="big"><span class="mark" id="ansYen">–</span><small id="ansOku"></small></div>
   <div class="verdict" id="verdict"></div>
-  <div class="kpis">
-    <div class="kpi"><div class="t">営業利益（当期）</div><div class="v" id="kEigyo">–</div></div>
-    <div class="kpi"><div class="t">経常利益（当期）</div><div class="v" id="kKeijo">–</div></div>
-    <div class="kpi"><div class="t">CCC（当期）</div><div class="v" id="kCcc">–</div></div>
-    <div class="kpi"><div class="t">実質手元現金（現預金−短期借入金）</div><div class="v" id="kCash">–</div></div>
+  <div class="stats">
+    <div><span>営業利益（当期）</span><b id="kEigyo">–</b></div>
+    <div><span>経常利益（当期）</span><b id="kKeijo">–</b></div>
+    <div><span>CCC（当期）</span><b id="kCcc">–</b></div>
+    <div><span>実質手元現金（現預金−短期借入金）</span><b id="kCash">–</b></div>
   </div>
 </div>
 
@@ -153,18 +180,18 @@
   <div>
     <div class="card">
       <h2>投資可能額の算出</h2>
-      <table id="tblInv"></table>
+      <div class="tblwrap"><table id="tblInv"></table></div>
       <div class="barwrap" id="invBars"></div>
     </div>
     <div class="card">
       <h2>運転資本とCCC（キャッシュ・コンバージョン・サイクル）</h2>
-      <table id="tblCcc"></table>
+      <div class="tblwrap"><table id="tblCcc"></table></div>
       <div class="barwrap" id="cccBars"></div>
       <div class="legend"><span class="lg-a">前期</span><span class="lg-b">当期</span></div>
     </div>
     <div class="card">
       <h2>安全資金の前提別 感応度（当期）</h2>
-      <table id="tblSens"></table>
+      <div class="tblwrap"><table id="tblSens"></table></div>
     </div>
     <div class="warn">
       <h3>ご利用にあたって</h3>
@@ -177,7 +204,7 @@
   </div>
 </div>
 </main>
-<footer>© 山下税理士事務所｜本シミュレーターは概算試算ツールであり、結果の正確性を保証するものではありません。</footer>
+<footer>山下税理士事務所 ｜ okanefuyasu.net ｜ 決算書の数値にもとづく概算シミュレーション（結果の正確性を保証するものではありません）</footer>
 <script>
 const $=id=>document.getElementById(id);
 const IDS=['uri','gen','han','gnk','es','eh','ri','la','cash','uk','ms','tn','tk','kk','mb','tb'];
@@ -227,7 +254,7 @@ function render(){
   $('ansOku').textContent='（≒ '+(cur.invest/1e8).toFixed(1)+' 億円）';
   if(cur.invest<0){
     conc.classList.add('ng');
-    $('verdict').textContent='⚠ 投資余力なし。流動資産が運転資本＋安全資金を下回るため、新規運用より借入圧縮・資金繰り改善を優先してください。';
+    $('verdict').textContent='投資余力なし。流動資産が運転資本＋安全資金を下回るため、新規運用より借入圧縮・資金繰り改善を優先してください。';
   }else{
     conc.classList.remove('ng');
     $('verdict').textContent=`流動資産から運転資本と安全資金（販管費 ${months} ヶ月分）を確保した上での余剰資金。上限目線であり、流動性を維持しながら段階的に運用する前提です。`;
@@ -250,10 +277,10 @@ function render(){
     <tr class="hl"><td>⑤ 投資可能額</td>${prev?`<td${neg(prev.invest)}>${yen(prev.invest)}</td>`:''}<td${neg(cur.invest)}>${yen(cur.invest)}</td><td style="text-align:left">① − ② − ④（上限目線）</td></tr>`;
   const m=Math.max(cur.realLA,cur.wc,cur.safety,Math.abs(cur.invest));
   $('invBars').innerHTML=
-    bar('① 実質流動資産',cur.realLA,m,'var(--bar1)',yen(cur.realLA))+
-    bar('② 運転資本',cur.wc,m,'#c0504d',yen(cur.wc))+
-    bar('④ 安全資金',cur.safety,m,'#e8b64c',yen(cur.safety))+
-    bar('⑤ 投資可能額',Math.max(0,cur.invest),m,cur.invest<0?'#b45309':'var(--green)',yen(cur.invest));
+    bar('① 実質流動資産',cur.realLA,m,'var(--c-hatch)',yen(cur.realLA))+
+    bar('② 運転資本',cur.wc,m,'var(--c-dark)',yen(cur.wc))+
+    bar('④ 安全資金',cur.safety,m,'var(--c-gray)',yen(cur.safety))+
+    bar('⑤ 投資可能額',Math.max(0,cur.invest),m,cur.invest<0?'var(--neg)':'var(--c-main)',yen(cur.invest));
 
   // CCC テーブル＋バー
   const day=v=>isFinite(v)?v.toFixed(1)+'日':'–';
@@ -269,8 +296,8 @@ function render(){
   const mx=Math.max(...rows.map(r=>Math.max(prev&&isFinite(prev[r[1]])?prev[r[1]]:0,isFinite(cur[r[1]])?cur[r[1]]:0)));
   $('cccBars').innerHTML=rows.map(r=>{
     let h='';
-    if(prev&&isFinite(prev[r[1]])) h+=bar(r[0]+'（前期）',prev[r[1]],mx,'var(--bar1)',day(prev[r[1]]));
-    h+=bar(r[0]+'（当期）',isFinite(cur[r[1]])?cur[r[1]]:0,mx,'var(--bar2)',day(cur[r[1]]));
+    if(prev&&isFinite(prev[r[1]])) h+=bar(r[0]+'（前期）',prev[r[1]],mx,'var(--c-hatch)',day(prev[r[1]]));
+    h+=bar(r[0]+'（当期）',isFinite(cur[r[1]])?cur[r[1]]:0,mx,'var(--c-main)',day(cur[r[1]]));
     return h;
   }).join('');
 
