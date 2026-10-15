@@ -92,6 +92,7 @@
   #printBtn{background:#fff; color:var(--ink); border:1.5px solid var(--ink); border-radius:4px; font-weight:700; font-family:inherit; font-size:.85rem; padding:7px 14px; cursor:pointer; flex-shrink:0;}
   #printBtn:hover{background:var(--accent);}
   @media print{
+    #kaikeiImport{display:none !important;}
     *{-webkit-print-color-adjust:exact; print-color-adjust:exact;}
     body{background:#fff;}
     header{padding:0 0 10px; border-top-width:4px;}
@@ -136,6 +137,10 @@
 
 <div class="grid">
   <div>
+    <details class="ki-wrap" id="kaikeiImport">
+      <summary>会計データから入れる<small>freee・弥生・マネーフォワード</small></summary>
+      <div id="kaikeiImportBox">取り込み部品を読み込んでいます…</div>
+    </details>
     <div class="card">
       <h2>損益計算書（P/L）</h2>
       <div class="inrow head"><span></span><span>前期（任意）</span><span>当期</span></div>
@@ -318,6 +323,39 @@ document.querySelectorAll('.inrow input').forEach(el=>{
 $('months').addEventListener('input',render);
 $('shiire').addEventListener('change',render);
 render();
+</script>
+<script type="module" id="kaikei-import">
+// 会計データの取り込み（共通部品 okanefuyasu.net/shared/kaikei-import.js）。
+// 計算ロジックには触らない。取り込んだ数字を入力欄に入れて、ページの再計算を動かすだけ。
+const box = document.getElementById('kaikeiImportBox');
+try {
+  const K = await import('https://okanefuyasu.net/shared/kaikei-import.js');
+  const kikan = (d) => (d.elapsed && d.elapsed < (d.months || 12) ? `（${d.elapsed}か月分を12か月に換算）` : '');
+  const PLMAP = { uri: 'uriage', gen: 'genka', han: 'hankanhi', gnk: 'genka_shokyaku', es: 'eigyogai_shueki', eh: 'eigyogai_hiyo', ri: 'shiharai_risoku' };
+  const BSMAP = { la: 'ryudo_shisan', cash: 'genkin_yokin', uk: 'urikake', ms: 'mishu', tn: 'tanaoroshi', tk: 'tanki_kashitsuke', kk: 'kaikake', mb: 'miharai', tb: 'tanki_kariire' };
+  K.mountImporter(box, {
+    fields: [...Object.values(PLMAP), ...Object.values(BSMAP)],
+    onData(d) {
+      const done = []; const zero = [];
+      const fill = (map, conv) => {
+        if (!Object.values(map).some((k) => d.values[k] != null)) return false;
+        for (const [id, k] of Object.entries(map)) {
+          const v = d.values[k];
+          if (v == null) zero.push(K.LABELS[k]);
+          K.setInput(`c_${id}`, v == null ? 0 : conv(v));
+        }
+        return true;
+      };
+      if (fill(PLMAP, (v) => K.annualize(v, d.elapsed, d.months))) done.push(`損益${kikan(d)}`);
+      if (fill(BSMAP, (v) => v)) done.push('貸借（期末残高）');
+      if (!done.length) throw new Error('決算書の科目が見つかりません');
+      if (d.prev) { for (const [id, k] of Object.entries(PLMAP)) if (d.prev[k] != null) K.setInput(`p_${id}`, d.prev[k]); done.push('前期の損益（freee の前期通期）'); }
+      return `当期の欄に ${done.join('・')}を入れました${zero.length ? `。見つからず0円にした項目：${zero.join('、')}` : ''}`;
+    },
+  });
+} catch (e) {
+  box.textContent = '取り込み部品を読み込めませんでした。インターネットにつながっているか確認してください（手入力はそのまま使えます）。';
+}
 </script>
 </body>
 </html>
